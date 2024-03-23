@@ -35,3 +35,21 @@ resource "google_storage_bucket" "spotify_datalake" {
 
   force_destroy = true
 }
+
+resource "google_bigquery_dataset" "spotify_warehouse_datasets" {
+  project    = var.project
+  location   = var.region
+  dataset_id = var.spotify_warehouse_datasets
+}
+
+resource "google_bigquery_dataset" "spotify_analytics_datasets" {
+  project    = var.project
+  location   = var.region
+  dataset_id = var.spotify_analytics_datasets
+}
+
+resource "google_bigquery_dataset" "spotify_warehouse_ext_datasets" {
+  project    = var.project
+  location   = var.region
+  dataset_id = var.spotify_warehouse_ext_datasets
+}

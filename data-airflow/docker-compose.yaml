@@ -17,6 +17,8 @@ x-airflow-common: &airflow-common
     GCP_SPOTIFY_BUCKET: "$GCP_SPOTIFY_BUCKET"
     GOOGLE_APPLICATION_CREDENTIALS: "/.google/credentials/dezoomcamp-2024.json"
     AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: "google-cloud-platform://?extra__google_cloud_platform__key_path=$GOOGLE_APPLICATION_CREDENTIALS"
+    GCP_SPOTIFY_WH_DATASET: "$GCP_SPOTIFY_WH_DATASET"
+    GCP_SPOTIFY_WH_EXT_DATASET: "$GCP_SPOTIFY_WH_EXT_DATASET"
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
