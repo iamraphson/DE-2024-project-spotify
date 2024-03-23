@@ -4,29 +4,34 @@ import datetime as dt
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pyarrow.fs as pafs
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
+from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateExternalTableOperator
 
+AIRFLOW_HOME = os.environ.get('AIRFLOW_HOME', '/opt/airflow/')
+GCP_PROJECT_ID = os.environ.get('GCP_PROJECT_ID')
+GCP_SPOTIFY_BUCKET = os.environ.get('GCP_SPOTIFY_BUCKET')
+GCP_CREDENTIALS = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
 
-local_home_path = os.environ.get('AIRFLOW_HOME', '/opt/airflow/')
-dataset_download_path = f'{local_home_path}/spotify-dataset/'
+dataset_download_path = f'{AIRFLOW_HOME}/spotify-dataset/'
 
 def do_clean_to_parquet(ti):
     pq_root_paths = []
     for filename in os.listdir(dataset_download_path):
         if filename.endswith('.csv'):
             dataset_df = pd.read_csv(f'{dataset_download_path}{filename}', low_memory=False)
-            partition_cols = []
+            partition_cols = None
             parquet_root_path = dataset_download_path
 
             if filename.startswith('spotify-albums_data'):
                 dataset_df['release_date'] = pd.to_datetime(dataset_df['release_date']).dt.date
                 dataset_df = dataset_df.drop(columns=[
-                    'artists', 
-                    'duration_ms', 
-                    'artist_7', 
-                    'artist_8', 
+                    'artists',
+                    'duration_ms',
+                    'artist_7',
+                    'artist_8',
                     'artist_9',
                     'artist_10',
                     'artist_11'
@@ -49,16 +54,13 @@ def do_clean_to_parquet(ti):
                     'track_href',
                     'type'
                 ], axis='columns')
-
-
-                partition_cols = []
                 parquet_root_path = f'{dataset_download_path}spotify_features_pq'
             elif filename.startswith('spotify_tracks_data'):
                 partition_cols = ['explicit', 'track_popularity']
                 parquet_root_path = f'{dataset_download_path}spotify_tracks_pq'
             else:
                 continue
-            
+
 
             dataset_table = pa.Table.from_pandas(dataset_df)
             pq.write_to_dataset(
@@ -67,10 +69,35 @@ def do_clean_to_parquet(ti):
                 partition_cols=partition_cols
             )
             pq_root_paths.append(parquet_root_path)
-    
-    print('pq_root_paths', pq_root_paths)
+
     ti.xcom_push(key='pq_root_paths', value=pq_root_paths)
 
+def do_upload_pq_to_gcs(ti):
+    pq_root_paths = ti.xcom_pull(key='pq_root_paths', task_ids='do_clean_to_parquet_task')
+    if pq_root_paths is None:
+        pq_root_paths =[]
+
+    pq_dirs = []
+    gcs = pafs.GcsFileSystem()
+    for dir in pq_root_paths:
+        pq_dir = dir.split('/')[-1]
+
+        gcs_path = f'{GCP_SPOTIFY_BUCKET}/{pq_dir}'
+        dir_info = gcs.get_file_info(gcs_path)
+        if dir_info.type == pafs.FileType.Directory:
+            gcs.delete_dir(gcs_path)
+
+        gcs.create_dir(gcs_path)
+
+        pafs.copy_files(
+            source=dir,
+            destination=gcs_path,
+            destination_filesystem=gcs
+        )
+        pq_dirs.append(pq_dir)
+
+    logging.info('Copied parquet to gsc')
+    ti.xcom_push(key='pq_root_paths', value=pq_dirs)
 
 default_args = {
     'owner': 'iamraphson',
@@ -99,12 +126,18 @@ with DAG(
         task_id='do_clean_to_parquet_task',
         python_callable=do_clean_to_parquet
     )
-    
-    directory_clean_task = BashOperator(
-        task_id='directory_clean_task',
+
+    do_upload_pq_to_gcs_task = PythonOperator(
+        task_id='do_upload_pq_to_gcs',
+        python_callable=do_upload_pq_to_gcs
+    )
+
+    clean_task = BashOperator(
+        task_id='clean_task',
         bash_command=f"rm -rf {dataset_download_path}"
     )
 
     install_pip_packages_task.set_downstream(pulldown_dataset_task)
     pulldown_dataset_task.set_downstream(do_clean_to_parquet_task)
-    do_clean_to_parquet_task.set_downstream(directory_clean_task)
+    do_clean_to_parquet_task.set_downstream(do_upload_pq_to_gcs_task)
+    do_upload_pq_to_gcs_task.set_downstream(clean_task)
