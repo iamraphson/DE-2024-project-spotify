@@ -1,0 +1,25 @@
+version: 2
+
+sources:
+  - name: staging
+    database: radiant-gateway-412001
+    schema: spotify_warehouse
+    tables:
+      - name: spotify_albums
+      - name: spotify_artists
+      - name: spotify_features
+      - name: spotify_tracks
+  
+models:
+  - name: stg_spotify_features
+    description: "Features for spotify"
+  
+  - name: stg_spotify_tracks
+    description: "Features for spotify"
+
+  - name: stg_spotify_artists
+    description: "Features for spotify"
+
+  - name: stg_spotify_albums
+    description: "Features for spotify"
+    

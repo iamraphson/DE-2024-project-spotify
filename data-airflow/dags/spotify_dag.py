@@ -26,7 +26,6 @@ def do_clean_to_parquet(ti):
     for filename in os.listdir(dataset_download_path):
         if filename.endswith('.csv'):
             dataset_df = pd.read_csv(f'{dataset_download_path}{filename}', low_memory=False)
-            partition_cols = None
             parquet_root_path = dataset_download_path
 
             if filename.startswith('spotify-albums_data'):
@@ -61,8 +60,6 @@ def do_clean_to_parquet(ti):
 
                 parquet_root_path = f'{dataset_download_path}spotify_features_pq'
             elif filename.startswith('spotify_tracks_data'):
-                partition_cols = ['explicit', 'track_popularity']
-
                 parquet_root_path = f'{dataset_download_path}spotify_tracks_pq'
             else:
                 continue
@@ -76,6 +73,7 @@ def do_clean_to_parquet(ti):
             pq_root_paths.append(parquet_root_path)
 
     ti.xcom_push(key='pq_root_paths', value=pq_root_paths)
+
     logging.info('Done cleaning up!')
 
 def do_upload_pq_to_gcs(ti):
@@ -89,7 +87,7 @@ def do_upload_pq_to_gcs(ti):
 
         gcs_path = f'{GCP_SPOTIFY_BUCKET}/{pq_dir}'
         dir_info = gcs.get_file_info(gcs_path)
-        if dir_info.type == pafs.FileType.Directory:
+        if dir_info.type != pafs.FileType.NotFound:
             gcs.delete_dir(gcs_path)
 
         gcs.create_dir(gcs_path)
@@ -99,6 +97,7 @@ def do_upload_pq_to_gcs(ti):
             destination=gcs_path,
             destination_filesystem=gcs
         )
+
     logging.info('Copied parquet to gsc')
 
 default_args = {

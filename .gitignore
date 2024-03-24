@@ -5,3 +5,7 @@ data-airflow/logs/*
 terraform/.terraform/*
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
+logs/*
+data_dbt/target/*
+data_dbt/dbt_packages/*
+data_dbt/logs/*
