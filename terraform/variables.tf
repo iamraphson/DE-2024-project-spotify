@@ -22,13 +22,6 @@ variable "spotify_warehouse_datasets" {
   default     = "spotify_warehouse"
 }
 
-variable "spotify_analytics_datasets" {
-  type        = string
-  description = "Dataset in BigQuery where analytical data will be stored."
-  default     = "spotify_analytics"
-}
-
-
 variable "spotify_warehouse_ext_datasets" {
   type        = string
   description = "Dataset in BigQuery where raw data (external tables) will be loaded."
