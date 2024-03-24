@@ -1,0 +1,6 @@
+version: 2
+  
+models:
+  - name: facts_spotify
+    description: "Combine albums, artists, tracks and features into a table"
+    

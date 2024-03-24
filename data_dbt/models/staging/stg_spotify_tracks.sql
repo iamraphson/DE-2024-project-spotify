@@ -11,6 +11,6 @@ with tracksdata as (
 
 select 
     id,
-    track_popularity,
+    track_popularity as popularity,
     explicit
 from tracksdata

@@ -6,7 +6,7 @@
 
 with albumsdata as (
     select *
-    from {{ source('staging', 'spotify_albums') }} where track_name is null
+    from {{ source('staging', 'spotify_albums') }}
 )
 
 select
