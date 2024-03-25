@@ -20,10 +20,10 @@ x-airflow-common: &airflow-common
     GCP_SPOTIFY_WH_DATASET: "$GCP_SPOTIFY_WH_DATASET"
     GCP_SPOTIFY_WH_EXT_DATASET: "$GCP_SPOTIFY_WH_EXT_DATASET"
   volumes:
-    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
-    - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
-    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
-    - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    - ${AIRFLOW_PROJ_DIR:-.}/data-airflow/dags:/opt/airflow/dags
+    - ${AIRFLOW_PROJ_DIR:-.}/data-airflow/logs:/opt/airflow/logs
+    - ${AIRFLOW_PROJ_DIR:-.}/data-airflow/config:/opt/airflow/config
+    - ${AIRFLOW_PROJ_DIR:-.}/data-airflow/plugins:/opt/airflow/plugins
     - ~/.google/credentials/:/.google/credentials/:ro
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on: &airflow-common-depends-on
@@ -33,6 +33,11 @@ x-airflow-common: &airflow-common
       condition: service_healthy
 
 services:
+  metabase:
+    image: metabase/metabase:latest
+    container_name: spotify-metabase
+    ports:
+      - 1157:3000
   postgres:
     image: postgres:13
     container_name: airflow-postgres
@@ -111,8 +116,6 @@ services:
       start_period: 30s
     environment:
       <<: *airflow-common-env
-      # Required to handle warm shutdown of the celery workers properly
-      # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
     restart: always
     depends_on:
@@ -190,8 +193,8 @@ services:
           echo "   https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#before-you-begin"
           echo
         fi
-        mkdir -p /sources/logs /sources/dags /sources/plugins
-        chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
+        mkdir -p /sources/data-airflow/logs /sources/data-airflow/dags /sources/data-airflow/plugins
+        chown -R "${AIRFLOW_UID}:0" /sources/data-airflow/{logs,dags,plugins}
         exec /entrypoint airflow version
     # yamllint enable rule:line-length
     environment:
@@ -213,15 +216,11 @@ services:
     environment:
       <<: *airflow-common-env
       CONNECTION_CHECK_MAX_COUNT: "0"
-    # Workaround for entrypoint issue. See: https://github.com/apache/airflow/issues/16252
     command:
       - bash
       - -c
       - airflow
 
-  # You can enable flower by adding "--profile flower" option e.g. docker-compose --profile flower up
-  # or by explicitly targeted on the command line e.g. docker-compose up flower.
-  # See: https://docs.docker.com/compose/profiles/
   flower:
     <<: *airflow-common
     command: celery flower

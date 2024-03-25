@@ -117,12 +117,12 @@ with DAG(
     }
 ) as dag:
     install_pip_packages_task = BashOperator(
-        task_id='install_pip_packages',
+        task_id='install_pip_packages_task',
         bash_command='pip install --user kaggle'
     )
 
     pulldown_dataset_task = BashOperator(
-        task_id='pulldown_dataset',
+        task_id='pulldown_dataset_task',
         bash_command=f'kaggle datasets download tonygordonjr/spotify-dataset-2023 --path {dataset_download_path} --unzip'
     )
 
@@ -165,13 +165,13 @@ with DAG(
         }
     )
 
-    clean_up_tmp_store_task = BashOperator(
-        task_id='clean_up_tmp_store',
+    clean_up_dataset_store_task = BashOperator(
+        task_id='clean_up_dataset_store_task',
         bash_command=f"rm -rf {dataset_download_path}"
     )
 
-    uninstall_pip_packge_task = BashOperator(
-        task_id='uninstall_pip_packge_task',
+    uninstall_pip_package_task = BashOperator(
+        task_id='uninstall_pip_packagepip_task',
         bash_command=f"pip uninstall --yes kaggle"
     )
 
@@ -180,5 +180,5 @@ with DAG(
     do_clean_to_parquet_task.set_downstream(do_upload_pq_to_gcs_task)
     do_upload_pq_to_gcs_task.set_downstream(create_external_table_group_task)
     create_external_table_group_task.set_downstream(create_table_partition_task)
-    create_table_partition_task.set_downstream(clean_up_tmp_store_task)
-    create_table_partition_task.set_downstream(uninstall_pip_packge_task)
+    create_table_partition_task.set_downstream(clean_up_dataset_store_task)
+    create_table_partition_task.set_downstream(uninstall_pip_package_task)
