@@ -9,3 +9,4 @@ logs/*
 data_dbt/target/*
 data_dbt/dbt_packages/*
 data_dbt/logs/*
+*.DS_Store*
