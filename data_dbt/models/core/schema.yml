@@ -1,6 +1,7 @@
 version: 2
-  
+
 models:
   - name: facts_spotify
     description: "Combine albums, artists, tracks and features into a table"
-    
+  - name: dim_track_popularity
+    description: a dimension to get track popularity.
